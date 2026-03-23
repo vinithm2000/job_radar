@@ -176,7 +176,6 @@ def get_command_handlers():
         CommandHandler("unfollow", unfollow),
         CommandHandler("salary", salary),
         CommandHandler("resume", resume),
-        CommandHandler("preferences", prefs_cmd),
         CommandHandler("myprofile", myprofile_cmd),
         CommandHandler("stats", stats),
         CommandHandler("stop", stop),
