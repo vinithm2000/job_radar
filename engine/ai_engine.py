@@ -14,5 +14,14 @@ async def analyze_resume_match(user_id: int, saved_jobs: list) -> str:
     return f"📄 **Resume Match Analysis**\n\nComparing against:\n{jobs_summary}\n\nAnalysis: You have an 85% match for these roles! *(AI stub functionality)*"
 
 async def generate_interview_prep(job_id: str) -> str:
-    """Generate interview prep guide for a specific job."""
-    return f"🧠 **Interview Prep Guide** (Job {job_id})\n\n1. Review company values.\n2. Be ready for technical questions on your main stack.\n*(AI stub functionality)*"
+    """Returns static interview prep tips."""
+    return (
+        "🧠 <b>Universal Interview Guide</b>\n\n"
+        "Here are 5 steps to help you crack this interview:\n\n"
+        "1️⃣ <b>Research the Company:</b> Spend 10 mins reading their recent news and 'About Us' page.\n"
+        "2️⃣ <b>Master your Resume:</b> Be ready to explain every bullet point and project in detail.\n"
+        "3️⃣ <b>The Pitch:</b> Prepare your 'Tell me about yourself' to be roughly 90 seconds (Present -> Past -> Future).\n"
+        "4️⃣ <b>STAR Method:</b> Answer behavioral questions using Situation, Task, Action, Result.\n"
+        "5️⃣ <b>Ask Questions:</b> Always ask 2 intelligent questions at the end to show you care.\n\n"
+        "<i>Good luck! You've got this!</i> 💪"
+    )

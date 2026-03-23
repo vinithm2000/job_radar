@@ -55,7 +55,6 @@ def format_job_card(job: dict) -> tuple[str, InlineKeyboardMarkup]:
         f"📍 {location} [{badge}]\n"
         f"💰 {salary_str}\n"
         f"⏳ {experience}\n"
-        f"⭐ AI Score: {score}/10\n"
         f"📌 Source: {source.title()}\n"
         f"🕐 Posted: {days_ago}\n\n"
         f"<i>{ai_summary}</i>"

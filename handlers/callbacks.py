@@ -35,7 +35,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("interview_"):
         job_id = data.replace("interview_", "")
         prep = await generate_interview_prep(job_id)
-        await query.message.reply_text(prep, parse_mode="Markdown")
+        await query.message.reply_text(prep, parse_mode="HTML")
         
     elif data.startswith("mark_applied_"):
         saved_id = data.replace("mark_applied_", "")
