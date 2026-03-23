@@ -25,6 +25,26 @@ async def post_init(application: Application):
     """Actions to perform after the application connects, before it begins polling."""
     await init_db()
     
+    # Register the "Menu" button commands in the Telegram UI
+    from telegram import BotCommand
+    commands = [
+        BotCommand("start", "Start or setup profile"),
+        BotCommand("menu", "Interactive dashboard"),
+        BotCommand("search", "Live job search (e.g. /search python)"),
+        BotCommand("saved", "View your saved jobs"),
+        BotCommand("applied", "Application tracker"),
+        BotCommand("follow", "Watch a company (e.g. /follow Apple)"),
+        BotCommand("unfollow", "Manage watched companies"),
+        BotCommand("salary", "AI insights (e.g. /salary dev)"),
+        BotCommand("resume", "Resume matcher"),
+        BotCommand("preferences", "Set or update your job alerts"),
+        BotCommand("myprofile", "View your current profile"),
+        BotCommand("stats", "View public JobRadar stats"),
+        BotCommand("stop", "Pause all job alerts"),
+        BotCommand("help", "View full command reference")
+    ]
+    await application.bot.set_my_commands(commands)
+    
     scheduler = AsyncIOScheduler()
     scheduler.add_job(
         fetch_jobs_task,
