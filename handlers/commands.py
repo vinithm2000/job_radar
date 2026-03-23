@@ -2,7 +2,7 @@ import logging
 import uuid
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes, CommandHandler
-from database.db import get_db, add_or_update_user, get_user
+from database.db import get_db, add_or_update_user, get_user, get_job_preferences
 from engine.ai_engine import generate_salary_insights, analyze_resume_match
 from handlers.onboarding import start_preferences, my_profile
 
@@ -83,8 +83,25 @@ async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="HTML"
     )
     
+    user = update.effective_user
+    prefs = await get_job_preferences(user.id)
+    
+    sql = "SELECT * FROM jobs WHERE (title LIKE ? OR company LIKE ?)"
+    params = [f"%{query}%", f"%{query}%"]
+    
+    if prefs:
+        loc = prefs.get('preferred_location', 'Any')
+        if loc and loc.lower() != 'any':
+            locations = [l.strip() for l in loc.split(',') if l.strip()]
+            if locations:
+                loc_clauses = " OR ".join(["location LIKE ?" for _ in locations])
+                sql += f" AND ({loc_clauses})"
+                params.extend([f"%{l}%" for l in locations])
+                
+    sql += " LIMIT 8"
+    
     async with get_db() as db:
-        async with db.execute("SELECT * FROM jobs WHERE title LIKE ? OR company LIKE ? LIMIT 5", (f"%{query}%", f"%{query}%")) as cursor:
+        async with db.execute(sql, tuple(params)) as cursor:
             jobs = await cursor.fetchall()
             
     await asyncio.sleep(0.5)
