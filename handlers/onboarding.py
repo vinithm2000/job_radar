@@ -52,14 +52,14 @@ async def start_preferences(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_domain_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
-    
     data = query.data
+    
     if data == "confirm_domains":
         if not context.user_data.get('domains'):
             await query.answer("Please click at least one domain above!", show_alert=True)
             return CHOOSING_DOMAINS
-            
+        
+        await query.answer()
         # Move to Step 2
         keyboard = [
             [InlineKeyboardButton("Fresher (0-1yr)", callback_data="exp_Fresher")],
@@ -75,52 +75,66 @@ async def handle_domain_selection(update: Update, context: ContextTypes.DEFAULT_
         )
         return CHOOSING_EXPERIENCE
         
-    # Toggle domain
-    domain = data.replace("domain_", "")
-    selected = context.user_data.setdefault('domains', set())
-    if domain in selected:
-        selected.remove(domain)
-    else:
-        selected.add(domain)
+    elif data.startswith("domain_"):
+        await query.answer()
+        # Toggle domain
+        domain = data.replace("domain_", "")
+        selected = context.user_data.setdefault('domains', set())
+        if domain in selected:
+            selected.remove(domain)
+        else:
+            selected.add(domain)
+            
+        try:
+            await query.edit_message_reply_markup(reply_markup=build_domain_keyboard(selected))
+        except Exception as e:
+            logger.error(f"Failed to edit markup: {e}")
+            
+        return CHOOSING_DOMAINS
         
-    await query.edit_message_reply_markup(reply_markup=build_domain_keyboard(selected))
     return CHOOSING_DOMAINS
 
 # --- Step 2: Experience ---
 async def handle_experience(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    data = query.data
     
-    experience = query.data.replace("exp_", "")
-    context.user_data['experience'] = experience
-    
-    # Move to Step 3
-    keyboard = [
-        [InlineKeyboardButton("Work from Home / Remote", callback_data="work_Remote")],
-        [InlineKeyboardButton("Hybrid Model", callback_data="work_Hybrid")],
-        [InlineKeyboardButton("Office / On-site", callback_data="work_Office")],
-        [InlineKeyboardButton("Any", callback_data="work_Any")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(
-        text="<b>Step 3:</b> What is your preferred work type?",
-        reply_markup=reply_markup, parse_mode='HTML'
-    )
-    return CHOOSING_WORK_TYPE
+    if data.startswith("exp_"):
+        await query.answer()
+        experience = data.replace("exp_", "")
+        context.user_data['experience'] = experience
+        
+        # Move to Step 3
+        keyboard = [
+            [InlineKeyboardButton("Work from Home / Remote", callback_data="work_Remote")],
+            [InlineKeyboardButton("Hybrid Model", callback_data="work_Hybrid")],
+            [InlineKeyboardButton("Office / On-site", callback_data="work_Office")],
+            [InlineKeyboardButton("Any", callback_data="work_Any")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(
+            text="<b>Step 3:</b> What is your preferred work type?",
+            reply_markup=reply_markup, parse_mode='HTML'
+        )
+        return CHOOSING_WORK_TYPE
+    return CHOOSING_EXPERIENCE
 
 # --- Step 3: Work Type ---
 async def handle_work_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    data = query.data
     
-    work_type = query.data.replace("work_", "")
-    context.user_data['work_type'] = work_type
-    
-    await query.edit_message_text(
-        text="<b>Step 4:</b> What is your preferred location? (Please TYPE a city name or type 'Any' in the chat box)",
-        parse_mode='HTML'
-    )
-    return TYPING_LOCATION
+    if data.startswith("work_"):
+        await query.answer()
+        work_type = data.replace("work_", "")
+        context.user_data['work_type'] = work_type
+        
+        await query.edit_message_text(
+            text="<b>Step 4:</b> What is your preferred location? (Please TYPE a city name or type 'Any' in the chat box)",
+            parse_mode='HTML'
+        )
+        return TYPING_LOCATION
+    return CHOOSING_WORK_TYPE
 
 # --- Step 4: Location ---
 async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -145,39 +159,42 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # --- Step 5: Salary & Save ---
 async def handle_salary(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    data = query.data
     
-    salary = query.data.replace("sal_", "")
-    user_id = update.effective_user.id
-    
-    # Save to db
-    domains_str = ",".join(context.user_data['domains'])
-    exp = context.user_data['experience']
-    work = context.user_data['work_type']
-    loc = context.user_data['location']
-    
-    await update_job_preferences(
-        user_id=user_id,
-        domains=domains_str,
-        experience_years=exp,
-        work_type=work,
-        preferred_location=loc,
-        min_salary=salary,
-        max_salary=""
-    )
-    
-    summary = (
-        "✅ <b>Preferences Saved Successfully!</b>\n\n"
-        f"<b>Domains:</b> {domains_str.title()}\n"
-        f"<b>Experience:</b> {exp}\n"
-        f"<b>Work Type:</b> {work}\n"
-        f"<b>Location:</b> {loc}\n"
-        f"<b>Salary:</b> {salary}\n\n"
-        "We will notify you when jobs matching these criteria get posted. Use /menu to view your dashboard."
-    )
-    await query.edit_message_text(text=summary, parse_mode='HTML')
-    context.user_data.clear()
-    return ConversationHandler.END
+    if data.startswith("sal_"):
+        await query.answer()
+        salary = data.replace("sal_", "")
+        user_id = update.effective_user.id
+        
+        # Save to db
+        domains_str = ",".join(context.user_data['domains'])
+        exp = context.user_data['experience']
+        work = context.user_data['work_type']
+        loc = context.user_data['location']
+        
+        await update_job_preferences(
+            user_id=user_id,
+            domains=domains_str,
+            experience_years=exp,
+            work_type=work,
+            preferred_location=loc,
+            min_salary=salary,
+            max_salary=""
+        )
+        
+        summary = (
+            "✅ <b>Preferences Saved Successfully!</b>\n\n"
+            f"<b>Domains:</b> {domains_str.title()}\n"
+            f"<b>Experience:</b> {exp}\n"
+            f"<b>Work Type:</b> {work}\n"
+            f"<b>Location:</b> {loc}\n"
+            f"<b>Salary:</b> {salary}\n\n"
+            "We will notify you when jobs matching these criteria get posted. Use /menu to view your dashboard."
+        )
+        await query.edit_message_text(text=summary, parse_mode='HTML')
+        context.user_data.clear()
+        return ConversationHandler.END
+    return CHOOSING_SALARY
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Cancels and ends the conversation."""
@@ -209,11 +226,11 @@ def get_onboarding_handler():
     return ConversationHandler(
         entry_points=[CommandHandler('preferences', start_preferences)],
         states={
-            CHOOSING_DOMAINS: [CallbackQueryHandler(handle_domain_selection, pattern="^(domain_|confirm_domains)")],
-            CHOOSING_EXPERIENCE: [CallbackQueryHandler(handle_experience, pattern="^exp_")],
-            CHOOSING_WORK_TYPE: [CallbackQueryHandler(handle_work_type, pattern="^work_")],
+            CHOOSING_DOMAINS: [CallbackQueryHandler(handle_domain_selection)],
+            CHOOSING_EXPERIENCE: [CallbackQueryHandler(handle_experience)],
+            CHOOSING_WORK_TYPE: [CallbackQueryHandler(handle_work_type)],
             TYPING_LOCATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_location)],
-            CHOOSING_SALARY: [CallbackQueryHandler(handle_salary, pattern="^sal_")]
+            CHOOSING_SALARY: [CallbackQueryHandler(handle_salary)]
         },
         fallbacks=[CommandHandler('cancel', cancel)],
         per_user=True

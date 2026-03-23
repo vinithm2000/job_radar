@@ -30,8 +30,6 @@ JOB_DOMAINS = [
     "content writer",
     "customer support",
     "sales",
-    "work from home",
-    "fresher jobs",
     "devops engineer",
     "machine learning"
 ]
