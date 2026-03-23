@@ -33,6 +33,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"👋 <b>Welcome to JobRadar, {user.first_name}!</b>\n"
         "━━━━━━━━━━━━━━\n"
         "🎯 I scan <b>Naukri · LinkedIn · Indeed</b> every 2 hrs and send you only jobs that match YOUR profile.\n\n"
+        "💰 Also save money with our deals bot → @GetDealRadarBot\n\n"
         "⚡ <b>Setup takes 60 seconds:</b>"
     )
     await update.message.reply_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboard))
