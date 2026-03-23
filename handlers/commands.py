@@ -90,6 +90,7 @@ async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     params = [f"%{query}%", f"%{query}%"]
     
     if prefs:
+        prefs = dict(prefs)
         loc = prefs.get('preferred_location', 'Any')
         if loc and loc.lower() != 'any':
             locations = [l.strip() for l in loc.split(',') if l.strip()]
