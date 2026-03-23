@@ -9,18 +9,37 @@ from telegram.ext import (
     filters
 )
 from database.db import update_job_preferences, get_job_preferences, add_or_update_user
-from config import JOB_DOMAINS
+from config import DOMAIN_CATEGORIES
 
 logger = logging.getLogger(__name__)
 
 # States
 CHOOSING_DOMAINS, CHOOSING_EXPERIENCE, CHOOSING_WORK_TYPE, TYPING_LOCATION, CHOOSING_SALARY = range(5)
 
-# --- Helper to build domain keyboard ---
-def build_domain_keyboard(selected_domains):
+# --- Helper to build category keyboard ---
+def build_category_keyboard(selected_domains):
     keyboard = []
     row = []
-    for domain in JOB_DOMAINS:
+    categories = list(DOMAIN_CATEGORIES.keys())
+    for idx, cat in enumerate(categories):
+        cat_selected = sum(1 for d in DOMAIN_CATEGORIES[cat] if d in selected_domains)
+        btn_text = f"{cat} ({cat_selected})" if cat_selected > 0 else cat
+        row.append(InlineKeyboardButton(btn_text, callback_data=f"cat_{idx}"))
+        if len(row) == 2:
+            keyboard.append(row)
+            row = []
+    if row:
+        keyboard.append(row)
+        
+    total_selected = len(selected_domains)
+    keyboard.append([InlineKeyboardButton(f"➡️ Next Step ({total_selected} Selected)", callback_data="confirm_domains")])
+    return InlineKeyboardMarkup(keyboard)
+
+def build_subcategory_keyboard(cat_idx, selected_domains):
+    category = list(DOMAIN_CATEGORIES.keys())[int(cat_idx)]
+    keyboard = []
+    row = []
+    for domain in DOMAIN_CATEGORIES[category]:
         text = f"✅ {domain.title()}" if domain in selected_domains else domain.title()
         row.append(InlineKeyboardButton(text, callback_data=f"domain_{domain}"))
         if len(row) == 2:
@@ -29,7 +48,7 @@ def build_domain_keyboard(selected_domains):
     if row:
         keyboard.append(row)
         
-    keyboard.append([InlineKeyboardButton("➡️ Next Step / Done", callback_data="confirm_domains")])
+    keyboard.append([InlineKeyboardButton("🔙 Back to Categories", callback_data="back_to_categories")])
     return InlineKeyboardMarkup(keyboard)
 
 # --- Step 1: Start & Domains ---
@@ -38,9 +57,10 @@ async def start_preferences(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await add_or_update_user(user.id, user.username, user.full_name)
     
     context.user_data['domains'] = set()
-    reply_markup = build_domain_keyboard(context.user_data['domains'])
+    context.user_data['current_cat_idx'] = None
+    reply_markup = build_category_keyboard(context.user_data['domains'])
     
-    msg = "Let's set up your job preferences! 🎯\n\n<b>Step 1:</b> Select the job domains you are interested in. You can select multiple. Click 'Next Step / Done' when you are finished."
+    msg = "Let's set up your job preferences! 🎯\n\n<b>Step 1:</b> Select a category to pick your desired job domains. Click 'Next Step' when you are finished."
     
     if update.callback_query:
         await update.callback_query.answer()
@@ -56,7 +76,7 @@ async def handle_domain_selection(update: Update, context: ContextTypes.DEFAULT_
     
     if data == "confirm_domains":
         if not context.user_data.get('domains'):
-            await query.answer("Please click at least one domain above!", show_alert=True)
+            await query.answer("Please select at least one domain!", show_alert=True)
             return CHOOSING_DOMAINS
         
         await query.answer()
@@ -75,6 +95,28 @@ async def handle_domain_selection(update: Update, context: ContextTypes.DEFAULT_
         )
         return CHOOSING_EXPERIENCE
         
+    elif data == "back_to_categories":
+        await query.answer()
+        context.user_data['current_cat_idx'] = None
+        selected = context.user_data.get('domains', set())
+        msg = "Let's set up your job preferences! 🎯\n\n<b>Step 1:</b> Select a category to pick your desired job domains. Click 'Next Step' when you are finished."
+        await query.edit_message_text(text=msg, reply_markup=build_category_keyboard(selected), parse_mode='HTML')
+        return CHOOSING_DOMAINS
+        
+    elif data.startswith("cat_"):
+        await query.answer()
+        idx = int(data.replace("cat_", ""))
+        context.user_data['current_cat_idx'] = idx
+        selected = context.user_data.get('domains', set())
+        
+        category_name = list(DOMAIN_CATEGORIES.keys())[idx]
+        await query.edit_message_text(
+            text=f"📂 <b>Folder: {category_name}</b>\nTap to select or deselect domains below:",
+            reply_markup=build_subcategory_keyboard(idx, selected),
+            parse_mode='HTML'
+        )
+        return CHOOSING_DOMAINS
+        
     elif data.startswith("domain_"):
         await query.answer()
         # Toggle domain
@@ -86,7 +128,11 @@ async def handle_domain_selection(update: Update, context: ContextTypes.DEFAULT_
             selected.add(domain)
             
         try:
-            await query.edit_message_reply_markup(reply_markup=build_domain_keyboard(selected))
+            cat_idx = context.user_data.get('current_cat_idx')
+            if cat_idx is not None:
+                await query.edit_message_reply_markup(reply_markup=build_subcategory_keyboard(cat_idx, selected))
+            else:
+                await query.edit_message_reply_markup(reply_markup=build_category_keyboard(selected))
         except Exception as e:
             logger.error(f"Failed to edit markup: {e}")
             
