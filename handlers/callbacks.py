@@ -14,7 +14,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if data.startswith("save_job_"):
         job_id = data.replace("save_job_", "")
-        async with await get_db() as db:
+        async with get_db() as db:
             # Fetch job details
             async with db.execute("SELECT title, company, url FROM jobs WHERE id = ?", (job_id,)) as cursor:
                 job = await cursor.fetchone()
@@ -39,7 +39,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     elif data.startswith("remove_saved_"):
         saved_id = data.replace("remove_saved_", "")
-        async with await get_db() as db:
+        async with get_db() as db:
             await db.execute("DELETE FROM saved_jobs WHERE id = ?", (saved_id,))
             await db.commit()
         await query.edit_message_text("✅ Job removed from saved list.")

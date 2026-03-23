@@ -19,7 +19,7 @@ async def filter_new_jobs(jobs: list[dict]) -> list[dict]:
     if not urls:
         return []
         
-    async with await get_db() as db:
+    async with get_db() as db:
         # We can do this in batches or one query. For SQLite with small list, one query is fine.
         placeholders = ','.join(['?'] * len(urls))
         async with db.execute(f"SELECT url FROM posted_jobs WHERE url IN ({placeholders})", urls) as cursor:
@@ -34,7 +34,7 @@ async def mark_jobs_as_posted(jobs: list[dict]):
     """Insert newly fetched and verified jobs into posted_jobs and jobs table."""
     # (Optional based on design: you might wait to mark them until actually sent to users.
     # But for a general deduplication, marking them as we fetch/store them makes sense)
-    async with await get_db() as db:
+    async with get_db() as db:
         for job in jobs:
             url = job['job_url']
             # Inserting into deduplication table

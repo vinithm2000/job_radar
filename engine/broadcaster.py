@@ -16,7 +16,7 @@ async def get_matching_users(job: dict) -> list[dict]:
     # We'll do a basic fetch and filter in python for simplicity.
     matched = []
     
-    async with await get_db() as db:
+    async with get_db() as db:
         async with db.execute("SELECT u.user_id, p.domains, p.work_type, p.experience_years, p.preferred_location FROM users u JOIN job_preferences p ON u.user_id = p.user_id WHERE u.is_active = 1") as cursor:
             users = await cursor.fetchall()
             
@@ -87,7 +87,7 @@ async def send_morning_digest(bot: Bot):
     """Sends top 10 jobs from the last 24hrs to all active users."""
     logger.info("Generating Morning Digest...")
     
-    async with await get_db() as db:
+    async with get_db() as db:
         # Fetch top 10 jobs ordered by score
         async with db.execute("SELECT * FROM jobs WHERE datetime(posted_at) >= datetime('now', '-1 day') ORDER BY score DESC LIMIT 10") as cursor:
             top_jobs = await cursor.fetchall()

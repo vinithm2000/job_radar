@@ -37,7 +37,7 @@ async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Usage: /search [query]")
         return
         
-    async with await get_db() as db:
+    async with get_db() as db:
         async with db.execute("SELECT * FROM jobs WHERE title LIKE ? OR company LIKE ? LIMIT 5", (f"%{query}%", f"%{query}%")) as cursor:
             jobs = await cursor.fetchall()
             
@@ -58,7 +58,7 @@ async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 async def saved(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    async with await get_db() as db:
+    async with get_db() as db:
         async with db.execute("SELECT * FROM saved_jobs WHERE user_id = ?", (update.effective_user.id,)) as cursor:
             jobs = await cursor.fetchall()
             
@@ -75,7 +75,7 @@ async def saved(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 async def applied(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    async with await get_db() as db:
+    async with get_db() as db:
         async with db.execute("SELECT * FROM applications WHERE user_id = ?", (update.effective_user.id,)) as cursor:
             apps = await cursor.fetchall()
             
@@ -92,13 +92,13 @@ async def follow(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Usage: /follow [company name]")
         return
         
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute("INSERT OR IGNORE INTO watched_companies (user_id, company_name) VALUES (?, ?)", (update.effective_user.id, company))
         await db.commit()
     await update.message.reply_text(f"I'll alert you the moment {company} posts a new job!")
 
 async def unfollow(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    async with await get_db() as db:
+    async with get_db() as db:
         async with db.execute("SELECT id, company_name FROM watched_companies WHERE user_id = ?", (update.effective_user.id,)) as cursor:
             comps = await cursor.fetchall()
             
@@ -130,14 +130,14 @@ async def myprofile_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await my_profile(update, context)
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    async with await get_db() as db:
+    async with get_db() as db:
         async with db.execute("SELECT COUNT(*) FROM users") as c: users = (await c.fetchone())[0]
         async with db.execute("SELECT COUNT(*) FROM jobs WHERE date(posted_at) = date('now')") as c: jobs = (await c.fetchone())[0]
         
     await update.message.reply_text(f"📊 **JobRadar Stats**\nUsers: {users}\nJobs posted today: {jobs}", parse_mode="Markdown")
 
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute("UPDATE users SET is_active = 0 WHERE user_id = ?", (update.effective_user.id,))
         await db.commit()
     await update.message.reply_text("Your alerts have been deactivated. Your data is kept safe. Send /start to resume.")

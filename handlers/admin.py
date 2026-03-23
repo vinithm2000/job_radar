@@ -16,7 +16,7 @@ def is_admin(user_id: int) -> bool:
 async def adminstats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id): return
     
-    async with await get_db() as db:
+    async with get_db() as db:
         async with db.execute("SELECT COUNT(*), SUM(is_active) FROM users") as c:
             row = await c.fetchone()
             total_users, active_users = row[0], row[1]
@@ -43,7 +43,7 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Usage: /broadcast [msg]")
         return
         
-    async with await get_db() as db:
+    async with get_db() as db:
         async with db.execute("SELECT user_id FROM users WHERE is_active = 1") as cursor:
             users = await cursor.fetchall()
             

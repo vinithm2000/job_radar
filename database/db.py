@@ -1,17 +1,22 @@
 import aiosqlite
 import logging
+from contextlib import asynccontextmanager
 from config import DB_PATH
 
 logger = logging.getLogger(__name__)
 
+@asynccontextmanager
 async def get_db():
     db = await aiosqlite.connect(DB_PATH)
     db.row_factory = aiosqlite.Row
-    return db
+    try:
+        yield db
+    finally:
+        await db.close()
 
 async def init_db():
     logger.info("Initializing database schema...")
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.executescript('''
             CREATE TABLE IF NOT EXISTS users (
                 user_id INTEGER PRIMARY KEY,
@@ -90,7 +95,7 @@ async def init_db():
 # Basic CRUD Operations
 
 async def add_or_update_user(user_id: int, username: str, full_name: str):
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute('''
             INSERT INTO users (user_id, username, full_name)
             VALUES (?, ?, ?)
@@ -102,12 +107,12 @@ async def add_or_update_user(user_id: int, username: str, full_name: str):
         await db.commit()
 
 async def get_user(user_id: int):
-    async with await get_db() as db:
+    async with get_db() as db:
         async with db.execute('SELECT * FROM users WHERE user_id = ?', (user_id,)) as cursor:
             return await cursor.fetchone()
 
 async def update_job_preferences(user_id: int, domains: str, experience_years: str, work_type: str, preferred_location: str, min_salary: str, max_salary: str):
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute('''
             INSERT INTO job_preferences (user_id, domains, experience_years, work_type, preferred_location, min_salary, max_salary, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -123,6 +128,6 @@ async def update_job_preferences(user_id: int, domains: str, experience_years: s
         await db.commit()
 
 async def get_job_preferences(user_id: int):
-    async with await get_db() as db:
+    async with get_db() as db:
         async with db.execute('SELECT * FROM job_preferences WHERE user_id = ?', (user_id,)) as cursor:
             return await cursor.fetchone()
