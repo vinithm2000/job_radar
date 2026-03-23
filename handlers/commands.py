@@ -100,9 +100,10 @@ async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
         
-    for job in jobs:
+    for job_row in jobs:
         from utils.formatter import format_job_card
-        text, markup = format_job_card(job)
+        job_dict = dict(job_row)
+        text, markup = format_job_card(job_dict)
         await update.message.reply_text(text, reply_markup=markup, parse_mode="HTML", disable_web_page_preview=True)
 
 async def saved(update: Update, context: ContextTypes.DEFAULT_TYPE):
