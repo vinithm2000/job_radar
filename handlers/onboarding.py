@@ -130,7 +130,7 @@ async def handle_work_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['work_type'] = work_type
         
         await query.edit_message_text(
-            text="<b>Step 4:</b> What is your preferred location? (Please TYPE a city name or type 'Any' in the chat box)",
+            text="<b>Step 4:</b> What is your preferred location? (Type one or more cities separated by commas, e.g. 'Chennai, Bangalore', or type 'Any')",
             parse_mode='HTML'
         )
         return TYPING_LOCATION

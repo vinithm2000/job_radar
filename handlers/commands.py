@@ -8,18 +8,27 @@ from handlers.onboarding import start_preferences, my_profile
 
 logger = logging.getLogger(__name__)
 
+import asyncio
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     db_user = await get_user(user.id)
     await add_or_update_user(user.id, user.username, user.full_name)
     
-    if not db_user:
-        await update.message.reply_text(
-            f"Hello {user.first_name}! Welcome to JobRadar bot. 🚀\n\n"
-            "To get started, please send /preferences to configure your alerts!"
-        )
-    else:
-        await menu(update, context)
+    keyboard = [
+        [InlineKeyboardButton("🚀 Start Setup", callback_data="menu_prefs"),
+         InlineKeyboardButton("🔍 Search Jobs", callback_data="menu_search")],
+        [InlineKeyboardButton("📋 My Profile", callback_data="menu_profile"),
+         InlineKeyboardButton("❓ Help", callback_data="menu_help")],
+    ]
+    
+    text = (
+        f"👋 <b>Welcome to JobRadar, {user.first_name}!</b>\n"
+        "━━━━━━━━━━━━━━\n"
+        "🎯 I scan <b>Naukri · LinkedIn · Indeed</b> every 2 hrs and send you only jobs that match YOUR profile.\n\n"
+        "⚡ <b>Setup takes 60 seconds:</b>"
+    )
+    await update.message.reply_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboard))
 
 async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
@@ -37,28 +46,57 @@ async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = " ".join(context.args) if context.args else ""
     if not query:
-        await update.message.reply_text("Usage: /search [query]")
+        await update.message.reply_text(
+            "😕 <b>Missing search query</b>\n\n"
+            "Try these instead:\n"
+            "• `/search python developer`\n"
+            "• `/search digital marketing wfh`\n"
+            "• `/search java bangalore`", 
+            parse_mode="HTML"
+        )
         return
         
+    loading = await update.message.reply_text(
+        "🔍 <b>Scanning portals...</b>\n"
+        "▓▓▓░░░░░░░ Naukri\n"
+        "░░░░░░░░░░ LinkedIn\n"
+        "░░░░░░░░░░ Indeed\n\n"
+        "<i>This takes ~3 seconds...</i>",
+        parse_mode="HTML"
+    )
+    
+    await asyncio.sleep(1.5)
+    await loading.edit_text(
+        "🔍 <b>Scanning portals...</b>\n"
+        "▓▓▓▓▓▓░░░░ Naukri ✓\n"
+        "▓▓▓▓░░░░░░ LinkedIn\n"
+        "▓▓▓▓▓▓░░░░ Indeed\n\n"
+        "<i>Filtering best matches...</i>",
+        parse_mode="HTML"
+    )
+    
     async with get_db() as db:
         async with db.execute("SELECT * FROM jobs WHERE title LIKE ? OR company LIKE ? LIMIT 5", (f"%{query}%", f"%{query}%")) as cursor:
             jobs = await cursor.fetchall()
             
+    await asyncio.sleep(0.5)
+    await loading.delete()
+            
     if not jobs:
-        await update.message.reply_text(f"No jobs found for '{query}'.")
+        await update.message.reply_text(
+            f"😕 <b>No jobs found for \"{query}\"</b>\n\n"
+            f"Try these instead:\n"
+            f"• `/search python developer`\n"
+            f"• `/search database remote`\n\n"
+            f"💡 New jobs arrive every 2 hours.",
+            parse_mode="HTML"
+        )
         return
         
     for job in jobs:
-        kb = [[
-            InlineKeyboardButton("Apply", url=job['url']),
-            InlineKeyboardButton("Save", callback_data=f"save_job_{job['id']}"),
-            InlineKeyboardButton("Interview Prep", callback_data=f"interview_{job['id']}")
-        ]]
-        await update.message.reply_text(
-            f"**{job['title']}** at {job['company']}\n📍 {job['location']} | 💰 {job['salary']}",
-            reply_markup=InlineKeyboardMarkup(kb),
-            parse_mode="Markdown"
-        )
+        from utils.formatter import format_job_card
+        text, markup = format_job_card(job)
+        await update.message.reply_text(text, reply_markup=markup, parse_mode="HTML", disable_web_page_preview=True)
 
 async def saved(update: Update, context: ContextTypes.DEFAULT_TYPE):
     async with get_db() as db:

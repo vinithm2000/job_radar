@@ -30,10 +30,14 @@ async def get_matching_users(job: dict) -> list[dict]:
             if job_domain not in str(u['domains']).lower():
                 continue
                 
-        # Basic Location check (if user said 'any', it matches)
-        pref_loc = str(u['preferred_location']).lower()
-        if pref_loc != 'any' and pref_loc not in job_loc and job_loc not in pref_loc:
-            continue
+        # Match location (Supports multiple comma-separated locations)
+        user_pref_loc = str(u['preferred_location']).lower()
+        if user_pref_loc and user_pref_loc != 'any':
+            pref_locs = [l.strip() for l in user_pref_loc.split(',') if l.strip()]
+            
+            # Check if ANY of the user's preferred locations exist in the job location
+            if not any(loc_part in job_loc for loc_part in pref_locs):
+                continue
             
         matched.append(u)
         
