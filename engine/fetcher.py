@@ -61,17 +61,27 @@ async def fetch_all_jobs() -> list[dict]:
     logger.info("Starting engine.fetch_all_jobs...")
     all_jobs = []
     
-    # We will fetch for each configured domain.
-    # To avoid overwhelming the system, we gather them.
-    # First, gather across scrapers for all domains
+    # Create a Semaphore to limit concurrent requests to 4 at a time
+    # This prevents 429 Too Many Requests and Telegram Event Loop Starvation
+    semaphore = asyncio.Semaphore(4)
     
+    async def bounded_fetch(func, *args):
+        async with semaphore:
+            # Stagger requests slightly to avoid sharp spikes
+            await asyncio.sleep(0.5)
+            try:
+                return await func(*args)
+            except Exception as e:
+                logger.error(f"Error executing {func.__name__} with {args}: {e}")
+                return []
+
     tasks = []
     for domain in JOB_DOMAINS:
-        tasks.append(fetch_jobspy(domain))
-        tasks.append(fetch_adzuna(domain))
+        tasks.append(bounded_fetch(fetch_jobspy, domain))
+        tasks.append(bounded_fetch(fetch_adzuna, domain))
         
-    # RSS doesn't take domain, so we just run it once
-    tasks.append(fetch_rss_jobs())
+    # RSS doesn't take domain args
+    tasks.append(bounded_fetch(fetch_rss_jobs))
     
     results = await asyncio.gather(*tasks, return_exceptions=True)
     
