@@ -21,12 +21,17 @@ def format_job_card(job: dict) -> tuple[str, InlineKeyboardMarkup]:
     badge = _get_work_type_badge(work_type)
     
     salary = job.get('salary') or job.get('min_amount')
+    
+    if isinstance(salary, str) and "none" in salary.lower():
+        salary = None
+        
     if not salary or str(salary).strip() == '-' or str(salary).strip() == '':
         salary_str = "Not disclosed"
     else:
         salary_str = str(salary)
-        if job.get('max_amount'):
-            salary_str += f" - {job.get('max_amount')}"
+        max_amt = job.get('max_amount')
+        if max_amt and str(max_amt).lower() != 'none':
+            salary_str += f" - {max_amt}"
             
     experience = job.get('experience', 'Not specified')
     score = job.get('score', 0)
