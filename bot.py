@@ -11,15 +11,22 @@ from handlers.commands import get_command_handlers
 from handlers.callbacks import get_callback_handlers
 from handlers.admin import get_admin_handlers
 
-# Example background job function
-async def fetch_jobs_task(context: ContextTypes.DEFAULT_TYPE):
+async def fetch_and_broadcast_jobs(context: ContextTypes.DEFAULT_TYPE):
     """
-    This task will run every 2 hours to scrape new jobs and notify users.
+    This task will run every 2 hours to scrape new jobs and broadcast to matched users.
     """
     logger.info("Executing scheduled job scraping task...")
     from engine.fetcher import fetch_all_jobs
+    from engine.broadcaster import broadcast_jobs
     jobs = await fetch_all_jobs()
+    if jobs:
+        await broadcast_jobs(context.bot, jobs)
     logger.info(f"Background task complete. Fetched {len(jobs)} total jobs.")
+
+async def daily_morning_digest(context: ContextTypes.DEFAULT_TYPE):
+    """Sends the daily 9AM digest to all active users."""
+    from engine.broadcaster import send_morning_digest
+    await send_morning_digest(context.bot)
 
 async def post_init(application: Application):
     """Actions to perform after the application connects, before it begins polling."""
@@ -31,6 +38,7 @@ async def post_init(application: Application):
         BotCommand("start", "Start or setup profile"),
         BotCommand("menu", "Interactive dashboard"),
         BotCommand("search", "Live job search (e.g. /search python)"),
+        BotCommand("pipeline", "View your application tracker"),
         BotCommand("saved", "View your saved jobs"),
         BotCommand("applied", "Application tracker"),
         BotCommand("follow", "Watch a company (e.g. /follow Apple)"),
@@ -45,18 +53,23 @@ async def post_init(application: Application):
     ]
     await application.bot.set_my_commands(commands)
     
-    scheduler = AsyncIOScheduler()
-    scheduler.add_job(
-        fetch_jobs_task,
-        "interval",
-        hours=2,
-        kwargs={'context': None},
-        id="job_scraper_interval",
-        replace_existing=True
+    import datetime
+    
+    # Run the fetcher and broadcaster every 2 hours
+    application.job_queue.run_repeating(
+        fetch_and_broadcast_jobs,
+        interval=7200,
+        first=60
     )
-    scheduler.start()
-    application.bot_data["scheduler"] = scheduler
-    logger.info("Scheduler started. Jobs will be fetched every 2 hours.")
+    
+    # Run the morning digest daily at 9:00 AM IST (3:30 AM UTC)
+    t = datetime.time(hour=3, minute=30, tzinfo=datetime.timezone.utc)
+    application.job_queue.run_daily(
+        daily_morning_digest,
+        time=t
+    )
+    
+    logger.info("PTB JobQueue started. Digests at 9AM IST, Scraping every 2 hours.")
 
 def main():
     """Start the bot."""

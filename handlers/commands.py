@@ -13,6 +13,13 @@ import asyncio
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     db_user = await get_user(user.id)
+    
+    # If resuming from snooze
+    if db_user and db_user['is_active'] == 0:
+        async with get_db() as db:
+            await db.execute("UPDATE users SET is_active = 1 WHERE user_id = ?", (user.id,))
+            await db.commit()
+            
     await add_or_update_user(user.id, user.username, user.full_name)
     
     keyboard = [
@@ -104,16 +111,45 @@ async def saved(update: Update, context: ContextTypes.DEFAULT_TYPE):
             jobs = await cursor.fetchall()
             
     if not jobs:
-        await update.message.reply_text("You have no saved jobs.")
+        await update.message.reply_text("😕 You have no saved jobs. Use /search to find some!")
         return
         
     for job in jobs:
-        kb = [[InlineKeyboardButton("Remove", callback_data=f"remove_saved_{job['id']}")]]
+        kb = [
+            [InlineKeyboardButton("✅ Mark as Applied", callback_data=f"mark_applied_{job['id']}"),
+             InlineKeyboardButton("🗑️ Remove", callback_data=f"remove_saved_{job['id']}")],
+            [InlineKeyboardButton("🔗 View Original Job", url=job['job_url'])]
+        ]
+        text = f"💼 <b>{job['job_title']}</b>\n🏢 {job['company']}\n\n<i>Have you applied for this role yet?</i>"
         await update.message.reply_text(
-            f"**{job['job_title']}** at {job['company']}\n🔗 {job['job_url']}",
+            text,
             reply_markup=InlineKeyboardMarkup(kb),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
+
+async def pipeline(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    async with get_db() as db:
+        async with db.execute("SELECT COUNT(*) FROM saved_jobs WHERE user_id = ?", (user_id,)) as c:
+            saved_count = (await c.fetchone())[0]
+        async with db.execute("SELECT status, COUNT(*) FROM applications WHERE user_id = ? GROUP BY status", (user_id,)) as c:
+            status_counts = await c.fetchall()
+            
+    stats = {"Applied": 0, "Interview": 0, "Offer": 0, "Rejected": 0}
+    for st, count in status_counts:
+        stats[st] = count
+        
+    text = (
+        "📊 <b>Your Application Pipeline</b>\n"
+        "━━━━━━━━━━━━━━\n"
+        f"💾 <b>Saved Jobs:</b> {saved_count}\n"
+        f"📤 <b>Applied:</b> {stats.get('Applied', 0)}\n"
+        f"🎯 <b>Interviews:</b> {stats.get('Interview', 0)}\n"
+        f"🏆 <b>Offers:</b> {stats.get('Offer', 0)}\n"
+        f"❌ <b>Rejected:</b> {stats.get('Rejected', 0)}\n\n"
+        "<i>Keep applying! You only need 1 yes! 💪</i>"
+    )
+    await update.message.reply_text(text, parse_mode="HTML")
 
 async def applied(update: Update, context: ContextTypes.DEFAULT_TYPE):
     async with get_db() as db:
@@ -181,7 +217,12 @@ async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     async with get_db() as db:
         await db.execute("UPDATE users SET is_active = 0 WHERE user_id = ?", (update.effective_user.id,))
         await db.commit()
-    await update.message.reply_text("Your alerts have been deactivated. Your data is kept safe. Send /start to resume.")
+    await update.message.reply_text(
+        "⏸️ <b>Alerts Snoozed</b>\n\n"
+        "Your job crawler has been paused. You will no longer receive automated matches.\n"
+        "Use /start to resume your alerts anytime!",
+        parse_mode="HTML"
+    )
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
@@ -209,6 +250,7 @@ def get_command_handlers():
         CommandHandler("menu", menu),
         CommandHandler("search", search),
         CommandHandler("saved", saved),
+        CommandHandler("pipeline", pipeline),
         CommandHandler("applied", applied),
         CommandHandler("follow", follow),
         CommandHandler("unfollow", unfollow),

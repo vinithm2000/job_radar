@@ -37,6 +37,23 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         prep = await generate_interview_prep(job_id)
         await query.message.reply_text(prep, parse_mode="Markdown")
         
+    elif data.startswith("mark_applied_"):
+        saved_id = data.replace("mark_applied_", "")
+        async with get_db() as db:
+            async with db.execute("SELECT * FROM saved_jobs WHERE id = ?", (saved_id,)) as cursor:
+                saved_job = await cursor.fetchone()
+            if saved_job:
+                await db.execute(
+                    "INSERT INTO applications (user_id, job_id, company, role, status) VALUES (?, ?, ?, ?, ?)",
+                    (saved_job['user_id'], saved_job['job_id'], saved_job['company'], saved_job['job_title'], 'Applied')
+                )
+                await db.execute("DELETE FROM saved_jobs WHERE id = ?", (saved_id,))
+                await db.commit()
+                text = f"🎉 Awesome! You marked <b>{saved_job['job_title']}</b> at <b>{saved_job['company']}</b> as Applied.\n\nUse /pipeline to track your success!"
+                await query.edit_message_text(text, parse_mode="HTML")
+            else:
+                await query.answer("Job not found.", show_alert=True)
+                
     elif data.startswith("remove_saved_"):
         saved_id = data.replace("remove_saved_", "")
         async with get_db() as db:
@@ -66,4 +83,4 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text("Use /help for all commands.")
 
 def get_callback_handlers():
-    return CallbackQueryHandler(handle_callback, pattern="^(save_job_|apply_job_|interview_|remove_saved_|share_job_|menu_)")
+    return CallbackQueryHandler(handle_callback, pattern="^(save_job_|apply_job_|interview_|remove_saved_|share_job_|menu_|mark_applied_)")
