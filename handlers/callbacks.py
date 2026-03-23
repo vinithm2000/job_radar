@@ -50,6 +50,8 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(f"Share this job link: https://t.me/{bot_username}?start=job_{job_id}")
 
     # Helper menu callbacks
+    elif data == "menu_search":
+        await query.message.reply_text("Send /search [your job title] to find jobs directly! (Example: /search Python Developer)")
     elif data == "menu_prefs":
         await query.message.reply_text("Use /preferences to update your settings.")
     elif data == "menu_saved":

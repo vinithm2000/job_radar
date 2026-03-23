@@ -14,13 +14,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await add_or_update_user(user.id, user.username, user.full_name)
     
     if not db_user:
-        await start_preferences(update, context)
+        await update.message.reply_text(
+            f"Hello {user.first_name}! Welcome to JobRadar bot. 🚀\n\n"
+            "To get started, please send /preferences to configure your alerts!"
+        )
     else:
         await menu(update, context)
 
 async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("🔍 Search Jobs", switch_inline_query_current_chat=""),
+        [InlineKeyboardButton("🔍 Search Jobs", callback_data="menu_search"),
          InlineKeyboardButton("📋 My Preferences", callback_data="menu_prefs")],
         [InlineKeyboardButton("💾 Saved Jobs", callback_data="menu_saved"),
          InlineKeyboardButton("📊 Salary Insights", callback_data="menu_salary")],
