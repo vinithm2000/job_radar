@@ -40,13 +40,13 @@ async def start_preferences(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['domains'] = set()
     reply_markup = build_domain_keyboard(context.user_data['domains'])
     
-    msg = "Let's set up your job preferences! 🎯\n\n**Step 1:** Select the job domains you are interested in. You can select multiple. Click 'Next Step' when you're done."
+    msg = "Let's set up your job preferences! 🎯\n\n<b>Step 1:</b> Select the job domains you are interested in. You can select multiple. Click 'Next Step / Done' when you are finished."
     
     if update.callback_query:
         await update.callback_query.answer()
-        await update.callback_query.edit_message_text(text=msg, reply_markup=reply_markup, parse_mode='Markdown')
+        await update.callback_query.edit_message_text(text=msg, reply_markup=reply_markup, parse_mode='HTML')
     else:
-        await update.message.reply_text(text=msg, reply_markup=reply_markup, parse_mode='Markdown')
+        await update.message.reply_text(text=msg, reply_markup=reply_markup, parse_mode='HTML')
     
     return CHOOSING_DOMAINS
 
@@ -57,20 +57,21 @@ async def handle_domain_selection(update: Update, context: ContextTypes.DEFAULT_
     data = query.data
     if data == "confirm_domains":
         if not context.user_data.get('domains'):
-            await query.answer("Please select at least one domain!", show_alert=True)
+            await query.answer("Please click at least one domain above!", show_alert=True)
             return CHOOSING_DOMAINS
             
         # Move to Step 2
         keyboard = [
-            [InlineKeyboardButton("Fresher (0-1yr)", callback_data="exp_Fresher (0-1yr)")],
-            [InlineKeyboardButton("Junior (1-3yr)", callback_data="exp_Junior (1-3yr)")],
-            [InlineKeyboardButton("Mid (3-5yr)", callback_data="exp_Mid (3-5yr)")],
-            [InlineKeyboardButton("Senior (5yr+)", callback_data="exp_Senior (5yr+)")]
+            [InlineKeyboardButton("Fresher (0-1yr)", callback_data="exp_Fresher")],
+            [InlineKeyboardButton("Junior (1-3yr)", callback_data="exp_Junior")],
+            [InlineKeyboardButton("Mid (3-5yr)", callback_data="exp_Mid")],
+            [InlineKeyboardButton("Senior (5yr+)", callback_data="exp_Senior")],
+            [InlineKeyboardButton("Any Experience", callback_data="exp_Any")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(
-            text="**Step 2:** What is your experience level?",
-            reply_markup=reply_markup, parse_mode='Markdown'
+            text="<b>Step 2:</b> What is your experience level?",
+            reply_markup=reply_markup, parse_mode='HTML'
         )
         return CHOOSING_EXPERIENCE
         
@@ -95,15 +96,15 @@ async def handle_experience(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Move to Step 3
     keyboard = [
-        [InlineKeyboardButton("Work from Home", callback_data="work_Work from Home")],
-        [InlineKeyboardButton("Hybrid", callback_data="work_Hybrid")],
-        [InlineKeyboardButton("On-site", callback_data="work_On-site")],
+        [InlineKeyboardButton("Work from Home / Remote", callback_data="work_Remote")],
+        [InlineKeyboardButton("Hybrid Model", callback_data="work_Hybrid")],
+        [InlineKeyboardButton("Office / On-site", callback_data="work_Office")],
         [InlineKeyboardButton("Any", callback_data="work_Any")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(
-        text="**Step 3:** What is your preferred work type?",
-        reply_markup=reply_markup, parse_mode='Markdown'
+        text="<b>Step 3:</b> What is your preferred work type?",
+        reply_markup=reply_markup, parse_mode='HTML'
     )
     return CHOOSING_WORK_TYPE
 
@@ -116,8 +117,8 @@ async def handle_work_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['work_type'] = work_type
     
     await query.edit_message_text(
-        text="**Step 4:** What is your preferred location? (Type a city name or 'Any')",
-        parse_mode='Markdown'
+        text="<b>Step 4:</b> What is your preferred location? (Please TYPE a city name or type 'Any' in the chat box)",
+        parse_mode='HTML'
     )
     return TYPING_LOCATION
 
@@ -136,8 +137,8 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        text="**Step 5:** What is your salary expectation?",
-        reply_markup=reply_markup, parse_mode='Markdown'
+        text="<b>Step 5:</b> What is your salary expectation?",
+        reply_markup=reply_markup, parse_mode='HTML'
     )
     return CHOOSING_SALARY
 
@@ -155,7 +156,6 @@ async def handle_salary(update: Update, context: ContextTypes.DEFAULT_TYPE):
     work = context.user_data['work_type']
     loc = context.user_data['location']
     
-    # For DB schema, min/max salary isn't strictly numeric here, we use the string choice for simplicity
     await update_job_preferences(
         user_id=user_id,
         domains=domains_str,
@@ -167,15 +167,15 @@ async def handle_salary(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     summary = (
-        "✅ **Preferences Saved Successfully!**\n\n"
-        f"**Domains:** {domains_str.title()}\n"
-        f"**Experience:** {exp}\n"
-        f"**Work Type:** {work}\n"
-        f"**Location:** {loc}\n"
-        f"**Salary:** {salary}\n\n"
-        "We will notify you when jobs matching these criteria get posted. Use /myprofile to view or /preferences to change."
+        "✅ <b>Preferences Saved Successfully!</b>\n\n"
+        f"<b>Domains:</b> {domains_str.title()}\n"
+        f"<b>Experience:</b> {exp}\n"
+        f"<b>Work Type:</b> {work}\n"
+        f"<b>Location:</b> {loc}\n"
+        f"<b>Salary:</b> {salary}\n\n"
+        "We will notify you when jobs matching these criteria get posted. Use /menu to view your dashboard."
     )
-    await query.edit_message_text(text=summary, parse_mode='Markdown')
+    await query.edit_message_text(text=summary, parse_mode='HTML')
     context.user_data.clear()
     return ConversationHandler.END
 
@@ -195,15 +195,15 @@ async def my_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
         
     summary = (
-        "👤 **Your JobRadar Profile**\n\n"
-        f"**Domains:** {prefs['domains'].title()}\n"
-        f"**Experience:** {prefs['experience_years']}\n"
-        f"**Work Type:** {prefs['work_type']}\n"
-        f"**Location:** {prefs['preferred_location']}\n"
-        f"**Expected Salary:** {prefs['min_salary']}\n\n"
+        "👤 <b>Your JobRadar Profile</b>\n\n"
+        f"<b>Domains:</b> {prefs['domains'].title()}\n"
+        f"<b>Experience:</b> {prefs['experience_years']}\n"
+        f"<b>Work Type:</b> {prefs['work_type']}\n"
+        f"<b>Location:</b> {prefs['preferred_location']}\n"
+        f"<b>Expected Salary:</b> {prefs['min_salary']}\n\n"
         "Use /preferences to update these settings."
     )
-    await update.message.reply_text(text=summary, parse_mode='Markdown')
+    await update.message.reply_text(text=summary, parse_mode='HTML')
 
 def get_onboarding_handler():
     return ConversationHandler(
