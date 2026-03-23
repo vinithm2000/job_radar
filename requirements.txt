@@ -1,0 +1,9 @@
+python-telegram-bot==21.3
+python-jobspy
+aiosqlite
+apscheduler
+anthropic
+requests
+feedparser
+PyMuPDF
+python-dotenv
